@@ -177,6 +177,17 @@ CefRefPtr<CefRequestContext> CefRequestContext::CreateContext(
 CefRequestContextImpl::~CefRequestContextImpl() {
   CEF_REQUIRE_UIT();
 
+  // Tear down extension state before RemoveCefRequestContext, which may free
+  // the underlying BrowserContext. Doing this here (rather than relying on
+  // member destruction order, which would run after the destructor body) lets
+  // the popup widgets close, the ExtensionRegistry observation reset, and any
+  // pending installer callbacks invalidate while the BrowserContext, its
+  // ExtensionRegistry and contained ExtensionViewHosts are still valid --
+  // otherwise raw_ptr fields inside the popup/observer dangle and trip
+  // partition_alloc DanglingPtr checks during shutdown.
+  extension_popup_manager_.reset();
+  extension_registry_observer_.reset();
+
   if (browser_context_) {
     // May result in |browser_context_| being deleted if no other
     // CefRequestContextImpl are referencing it.

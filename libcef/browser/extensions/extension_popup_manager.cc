@@ -201,6 +201,11 @@ class CefAlloyExtensionPopup : public views::BubbleDialogDelegate,
     // synchronously here.
     registry_observation_.Reset();
     Observe(nullptr);
+    // |extension_view_| points to the contents view owned by the views
+    // hierarchy. The Widget destroys its contents during the rest of close
+    // teardown -- before our DeleteSoon fires -- so null the raw_ptr now to
+    // avoid a DanglingPtr check when our destructor runs.
+    extension_view_ = nullptr;
     if (!delete_scheduled_) {
       delete_scheduled_ = true;
       base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE,

@@ -298,7 +298,14 @@ void CefExtensionRegistryObserver::OnExtensionUninstalled(
 
 void CefExtensionRegistryObserver::OnShutdown(
     extensions::ExtensionRegistry* registry) {
+  // The ExtensionRegistry shuts down with the BrowserContext, so drop every
+  // pointer that depends on either: stop observing, invalidate any installer
+  // callbacks that might still fire (they'd touch a freed BrowserContext via
+  // this), and null the raw_ptr so it does not dangle if our own destruction
+  // is delayed past context teardown.
   registry_observation_.Reset();
+  action_observation_.Reset();
+  weak_ptr_factory_.InvalidateWeakPtrs();
   browser_context_ = nullptr;
 }
 
