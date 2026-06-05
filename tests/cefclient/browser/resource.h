@@ -76,6 +76,7 @@
 #define IDS_WINDOW_ICON_2X_PNG 1029
 #define IDS_XMLHTTPREQUEST_HTML 1030
 #define IDS_EXTENSION_DEMO_HTML 1031
+#define IDS_TRANSPARENCY_DEMO_HTML 1032
 
 // Next default values for new objects
 //
