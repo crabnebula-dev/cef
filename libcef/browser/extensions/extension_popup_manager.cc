@@ -48,7 +48,6 @@
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
-#include "ui/views/background.h"
 #include "ui/views/bubble/bubble_anchor.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/style/platform_style.h"
@@ -145,6 +144,15 @@ class CefAlloyExtensionPopup : public views::BubbleDialogDelegate,
       return nullptr;
     }
 
+    // Make pages without an explicit `color-scheme` render on a white canvas,
+    // matching Chrome's extension popup. The page base background sits behind
+    // the document; pages that declare `color-scheme: dark` (and have its
+    // media query match) still get a Blink-painted dark UA canvas over this
+    // base, so they continue to render dark.
+    if (auto* contents = popup->host_->host_contents()) {
+      contents->SetPageBaseBackgroundColor(SK_ColorWHITE);
+    }
+
     // If the host had already finished loading (e.g. single-process mode), the
     // load-completed notification was missed; show now that the Widget exists.
     if (popup->host_->has_loaded_once()) {
@@ -227,9 +235,6 @@ class CefAlloyExtensionPopup : public views::BubbleDialogDelegate,
     SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
     set_use_round_corners(false);
     set_margins(gfx::Insets());
-    // Force a white bubble frame regardless of OS dark mode
-    // to matche the chrome runtime behavior.
-    SetBackgroundColor(SK_ColorWHITE);
     // Dismiss the popup as soon as it loses activation (a click outside it),
     // matching how the demo expects an action popup to behave.
     set_close_on_deactivate(true);
@@ -245,7 +250,6 @@ class CefAlloyExtensionPopup : public views::BubbleDialogDelegate,
     SetContentsView(std::move(view));
     extension_view_->SetContainer(this);
     extension_view_->Init();
-    extension_view_->SetBackground(views::CreateSolidBackground(SK_ColorWHITE));
 
     // Handle the hosted page calling window.close().
     host_->SetCloseHandler(base::BindOnce(
