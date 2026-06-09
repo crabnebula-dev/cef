@@ -14,9 +14,6 @@ namespace client::extension_demo_test {
 // Returns true if --extensions-demo is present on the command line.
 bool IsEnabled(CefRefPtr<CefCommandLine> command_line);
 
-// Launch the extension demo window. Call from OnContextInitialized.
-void Launch(CefRefPtr<CefCommandLine> command_line);
-
 // Register the message router handler(s) for the demo page.
 void CreateMessageHandlers(test_runner::MessageHandlerSet& handlers);
 

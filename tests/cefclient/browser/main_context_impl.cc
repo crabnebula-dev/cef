@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "include/cef_parser.h"
+#include "tests/cefclient/browser/extension_demo_test.h"
 #include "tests/cefclient/browser/test_runner.h"
 #include "tests/shared/browser/client_app_browser.h"
 #include "tests/shared/common/client_switches.h"
@@ -157,6 +158,8 @@ std::string MainContextImpl::GetMainURL(
   std::string main_url = kDefaultUrl;
   if (command_line->HasSwitch(switches::kUrl)) {
     main_url = command_line->GetSwitchValue(switches::kUrl);
+  } else if (extension_demo_test::IsEnabled(command_line)) {
+    main_url = test_runner::GetTestURL("extension_demo");
   } else if (command_line->HasSwitch(switches::kTransparencyDemo)) {
     main_url = test_runner::GetTestURL("transparency_demo");
   } else if (use_views_ && command_line->HasSwitch(switches::kHideFrame)) {

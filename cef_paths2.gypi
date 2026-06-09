@@ -344,6 +344,7 @@
       'tests/cefclient/resources/config.html',
       'tests/cefclient/resources/dialogs.html',
       'tests/cefclient/resources/draggable.html',
+      'tests/cefclient/resources/extension_demo.html',
       'tests/cefclient/resources/hang.html',
       'tests/cefclient/resources/ipc_performance.html',
       'tests/cefclient/resources/localstorage.html',

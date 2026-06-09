@@ -4,6 +4,8 @@
 
 #include "tests/cefclient/browser/util_mac.h"
 
+#include "include/cef_browser.h"
+
 namespace client {
 
 std::optional<CefRect> GetWindowBoundsInScreen(NSWindow* window) {
@@ -38,3 +40,64 @@ std::optional<CefRect> GetWindowBoundsInScreen(NSWindow* window) {
 }
 
 }  // namespace client
+
+namespace client::extension_demo_test {
+
+CefWindowHandle GetTabParentView(CefRefPtr<CefBrowser> main_browser) {
+  if (!main_browser) {
+    return nullptr;
+  }
+
+  NSView* browser_view = CAST_CEF_WINDOW_HANDLE_TO_NSVIEW(
+      main_browser->GetHost()->GetWindowHandle());
+  if (!browser_view) {
+    return nullptr;
+  }
+
+  NSView* parent_view = [browser_view superview];
+  if (!parent_view) {
+    return nullptr;
+  }
+
+  return CAST_NSVIEW_TO_CEF_WINDOW_HANDLE(parent_view);
+}
+
+void LayoutTabBrowser(CefRefPtr<CefBrowser> main_browser,
+                      CefRefPtr<CefBrowser> tab_browser,
+                      int viewport_h_px,
+                      const CefRect& tab_rect_px) {
+  if (!main_browser || !tab_browser) {
+    return;
+  }
+
+  NSView* browser_view = CAST_CEF_WINDOW_HANDLE_TO_NSVIEW(
+      main_browser->GetHost()->GetWindowHandle());
+  NSView* tab_view = CAST_CEF_WINDOW_HANDLE_TO_NSVIEW(
+      tab_browser->GetHost()->GetWindowHandle());
+  if (!browser_view || !tab_view) {
+    return;
+  }
+
+  NSView* parent_view = [browser_view superview];
+  if (!parent_view) {
+    return;
+  }
+
+  [tab_view removeFromSuperview];
+  [parent_view addSubview:tab_view positioned:NSWindowAbove relativeTo:nil];
+
+  const NSRect browser_frame = [browser_view frame];
+  const CGFloat viewport_h = viewport_h_px > 0
+                                 ? static_cast<CGFloat>(viewport_h_px)
+                                 : browser_frame.size.height;
+  const CGFloat x = browser_frame.origin.x + tab_rect_px.x;
+  const CGFloat y =
+      browser_frame.origin.y + viewport_h - tab_rect_px.y - tab_rect_px.height;
+  const NSRect tab_frame =
+      NSMakeRect(x, y, tab_rect_px.width, tab_rect_px.height);
+
+  [tab_view setFrame:tab_frame];
+  [tab_view setAutoresizingMask:NSViewNotSizable];
+}
+
+}  // namespace client::extension_demo_test

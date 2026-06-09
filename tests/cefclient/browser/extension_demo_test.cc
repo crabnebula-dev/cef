@@ -32,10 +32,17 @@
 
 namespace client::extension_demo_test {
 
+#if defined(OS_MAC)
+CefWindowHandle GetTabParentView(CefRefPtr<CefBrowser> main_browser);
+void LayoutTabBrowser(CefRefPtr<CefBrowser> main_browser,
+                      CefRefPtr<CefBrowser> tab_browser,
+                      int viewport_h_px,
+                      const CefRect& tab_rect_px);
+#endif
+
 namespace {
 
 const char kSwitch[] = "extensions-demo";
-const char kDemoUrl[] = "https://tests/extension_demo.html";
 const char kTab0Url[] = "https://vuejs.org/";
 const char kTab1Url[] = "https://react.dev/";
 
@@ -138,7 +145,7 @@ class DemoController : public CefExtensionHandler {
   IMPLEMENT_REFCOUNTING(DemoController);
 };
 
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_MAC)
 // Minimal CefClient for tab child browsers. Captures the CefBrowser pointer
 // back to the owning DemoController and reports focus changes.
 class TabClient : public CefClient,
@@ -205,7 +212,7 @@ class TabClient : public CefClient,
 
   IMPLEMENT_REFCOUNTING(TabClient);
 };
-#endif  // OS_WIN
+#endif  // defined(OS_WIN) || defined(OS_MAC)
 
 ControllerMap& Controllers() {
   // Intentionally leaked; the controller map lives until process exit.
@@ -235,10 +242,11 @@ CefRefPtr<DemoController> GetOrCreateController(CefRefPtr<CefBrowser> browser) {
 
 void DemoController::EnsureTabBrowsers() {
   CEF_REQUIRE_UI_THREAD();
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_MAC)
   if (!main_browser_) {
     return;
   }
+#if defined(OS_WIN)
   HWND host_hwnd = main_browser_->GetHost()->GetWindowHandle();
   if (!host_hwnd) {
     return;
@@ -247,6 +255,13 @@ void DemoController::EnsureTabBrowsers() {
   if (!parent_hwnd) {
     return;
   }
+  CefWindowHandle parent_handle = parent_hwnd;
+#elif defined(OS_MAC)
+  CefWindowHandle parent_handle = GetTabParentView(main_browser_);
+  if (!parent_handle) {
+    return;
+  }
+#endif
 
   for (int i = 0; i < 2; ++i) {
     if (tab_browsers_[i] || tab_create_started_[i]) {
@@ -255,7 +270,7 @@ void DemoController::EnsureTabBrowsers() {
     tab_create_started_[i] = true;
 
     CefWindowInfo wi;
-    wi.SetAsChild(parent_hwnd, CefRect(0, 0, 1, 1));
+    wi.SetAsChild(parent_handle, CefRect(0, 0, 1, 1));
     wi.runtime_style = main_browser_->GetHost()->GetRuntimeStyle();
 
     CefBrowserSettings settings;
@@ -333,6 +348,14 @@ void DemoController::LayoutTabs(int viewport_h_px,
     }
     ::SetWindowPos(child, HWND_TOP, r.x, top_inset + r.y, r.width, r.height,
                    SWP_NOACTIVATE | SWP_SHOWWINDOW);
+  }
+#elif defined(OS_MAC)
+  if (!main_browser_) {
+    return;
+  }
+  for (size_t i = 0; i < tab_rects_px.size() && i < 2; ++i) {
+    LayoutTabBrowser(main_browser_, tab_browsers_[i], viewport_h_px,
+                     tab_rects_px[i]);
   }
 #endif
 }
@@ -431,11 +454,6 @@ class DemoHandler : public CefMessageRouterBrowserSide::Handler {
                const CefString& request,
                bool persistent,
                CefRefPtr<Callback> callback) override {
-    const std::string& url = frame->GetURL();
-    if (url.find(kDemoUrl) != 0) {
-      return false;
-    }
-
     CefRefPtr<CefValue> v =
         CefParseJSON(request, JSON_PARSER_ALLOW_TRAILING_COMMAS);
     if (!v || v->GetType() != VTYPE_DICTIONARY) {
@@ -534,20 +552,6 @@ class DemoHandler : public CefMessageRouterBrowserSide::Handler {
 
 bool IsEnabled(CefRefPtr<CefCommandLine> command_line) {
   return command_line && command_line->HasSwitch(kSwitch);
-}
-
-void Launch(CefRefPtr<CefCommandLine> command_line) {
-  // Use the same defaults as a normal cefclient first window: RootWindowConfig
-  // resolves --use-views / --use-alloy-style / --hide-controls / etc. from
-  // |command_line|. We only substitute the loaded URL and OSR flag, mirroring
-  // the existing cefclient_win.cc/cefclient_gtk.cc first-window setup.
-  auto config = std::make_unique<RootWindowConfig>(command_line->Copy());
-  config->always_on_top = command_line->HasSwitch(switches::kAlwaysOnTop);
-  config->with_osr =
-      command_line->HasSwitch(switches::kOffScreenRenderingEnabled);
-  config->url = kDemoUrl;
-  MainContext::Get()->GetRootWindowManager()->CreateRootWindow(
-      std::move(config));
 }
 
 void CreateMessageHandlers(test_runner::MessageHandlerSet& handlers) {
